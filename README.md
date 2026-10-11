@@ -273,12 +273,15 @@ Optional authorization token for REST API. (Default: "") If set, then you
 must add line `-H "Authorization: Bearer <REST_BEARER_TOKEN>"` to REST API
 calls.
 
-### Scene Editor Ownership
+### Kiosk Scene Runtime
 
-HAOS-kiosk no longer owns the scene editor or the renderer scene config.
+The `Kiosk Scene` add-on owns and serves the scene runtime, editor, and renderer
+configuration. HAOS-kiosk does not bundle or copy scene runtime files into
+`/config`.
 
-Use the `Kiosk Scene` add-on for scene runtime/editor configuration. `HAOS
-Kiosk Display` remains the browser/device runtime and REST automation layer.
+HAOS-kiosk remains the browser/device runtime and REST automation layer. It
+continues to accept Kiosk Scene display URLs such as `/scene/` and route them
+to the add-on's `/scene-runtime/` URL.
 
 ### Gestures
 

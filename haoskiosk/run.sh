@@ -66,14 +66,6 @@ ha_info=$(bashio::info)
 bashio::log.info "Core=$(echo "$ha_info" | jq -r '.homeassistant')  HAOS=$(echo "$ha_info" | jq -r '.hassos')  MACHINE=$(echo "$ha_info" | jq -r '.machine')  ARCH=$(echo "$ha_info" | jq -r '.arch')"
 
 ################################################################################
-#### Sync bundled scene-runtime to /config/kiosk-scene/scene-runtime/
-if [ -d /opt/scene-runtime ]; then
-    SCENE_TARGET="/config/kiosk-scene/scene-runtime"
-    mkdir -p "$SCENE_TARGET"
-    cp -r /opt/scene-runtime/* "$SCENE_TARGET/"
-    bashio::log.info "Synced scene-runtime to $SCENE_TARGET"
-fi
-
 #### Clean up on exit:
 TTY0_DELETED=""  #Need to set to empty string since runs with nounset=on (like set -u)
 TTY0_MODE=""
@@ -177,7 +169,7 @@ case "$BROWSER_ENGINE" in
         # Mesa 25.0 (bookworm-backports) provides iris+Vulkan for Intel N150 (0x46d4),
         # so ANGLE will use hardware Vulkan via mesa-vulkan-drivers.
         # --enable-unsafe-swiftshader ensures SwANGLE fallback if hardware Vulkan fails.
-        BROWSER_FLAGS="--no-sandbox --no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-infobars --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --remote-allow-origins=* --user-data-dir=/config/chromium-profile --window-position=0,0 --start-fullscreen --kiosk --ozone-platform=x11 --touch-events=enabled --enable-gpu-rasterization --ignore-gpu-blocklist --enable-unsafe-swiftshader"
+        BROWSER_FLAGS="--no-sandbox --no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-infobars --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/config/chromium-profile --window-position=0,0 --start-fullscreen --kiosk --ozone-platform=x11 --touch-events=enabled --enable-gpu-rasterization --ignore-gpu-blocklist --enable-unsafe-swiftshader"
 
         bashio::log.info "Using browser engine: chromium [$BROWSER]"
         bashio::log.info "Chromium version: $($BROWSER --version 2>/dev/null || echo 'unknown')"

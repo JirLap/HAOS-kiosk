@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Stop bundling and copying Kiosk Scene runtime files into shared `/config`.
+  The Kiosk Scene add-on now serves its own runtime from its image.
+- Remove Chromium's wildcard DevTools WebSocket origin allowance. The local
+  browser control client does not send an Origin header.
+
 ## v1.3.2-welizard.120 - March 2026
 
 - **Fix lip sync / typewriter**: bubble with `speak:false` was overriding

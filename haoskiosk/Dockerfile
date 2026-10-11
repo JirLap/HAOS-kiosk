@@ -92,9 +92,6 @@ COPY xorg.conf.default /etc/X11/
 COPY userconf.lua /root/.config/luakit/
 COPY translations/*.yaml /translations/
 
-##### kiosk-scene hosted runtime (synced to /config/kiosk-scene/scene-runtime/ at startup)
-COPY scene-runtime/ /opt/scene-runtime/
-
 COPY run.sh /
 RUN chmod a+x /run.sh
 
