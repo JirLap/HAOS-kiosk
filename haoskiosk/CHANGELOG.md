@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.3.2-welizard.121 - October 2026
 
 - Stop bundling and copying Kiosk Scene runtime files into shared `/config`.
   The Kiosk Scene add-on now serves its own runtime from its image.
