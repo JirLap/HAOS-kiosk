@@ -60,6 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      patch \
      scrot \
      procps \
+     iproute2 \
 ### Python libraries
      python3-pip \
      python3-xlib \
