@@ -1,7 +1,7 @@
 # Changelog
 
 ## v1.3.2-welizard.124 - October 2026
-- Rollback forcing monitor, test only
+- Wait for a connected DRM display before starting X
 
 ## v1.3.2-welizard.123 - October 2026
 
