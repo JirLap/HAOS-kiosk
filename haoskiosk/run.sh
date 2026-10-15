@@ -70,7 +70,18 @@ bashio::log.info "Core=$(echo "$ha_info" | jq -r '.homeassistant')  HAOS=$(echo 
 TTY0_DELETED=""  #Need to set to empty string since runs with nounset=on (like set -u)
 TTY0_MODE=""
 ONBOARD_CONFIG_FILE="/config/onboard-settings.dconf"
+LAST_DRM_CONNECTOR_FILE="/config/last_drm_connector"
+FORCED_DRM_STATUS_PATH=""
+SYSFS_REMOUNTED_RW=false
+SYSFS_WAS_RO=false
 cleanup() {
+    if [ -n "$FORCED_DRM_STATUS_PATH" ] && [ -w "$FORCED_DRM_STATUS_PATH" ]; then
+        printf 'detect\n' > "$FORCED_DRM_STATUS_PATH" 2>/dev/null || true
+        bashio::log.info "Restored DRM connector to automatic detection"
+    fi
+    if [ "$SYSFS_REMOUNTED_RW" = true ] && [ "$SYSFS_WAS_RO" = true ]; then
+        mount -o remount,ro /sys 2>/dev/null || true
+    fi
     local exit_code=$?
     bashio::log.info "Cleaning up and exiting..."
     if [ "$SAVE_ONSCREEN_CONFIG" = true ]; then
@@ -312,28 +323,101 @@ libinput list-devices 2>/dev/null | awk '
   END { print_device() }  # Print last device
 ' | sort -V | column -t -s $'\t'
 
+force_drm_connector() {
+    local path="$1"
+    local sysfs_mount
+
+    [ -e "$path" ] || return 1
+    [ "$(cat "$path" 2>/dev/null)" = "connected" ] && return 0
+
+    # Status bývá v kontejneru připojen jen pro čtení. SYS_ADMIN je již
+    # deklarováno v config.yaml; remount se zkusí pouze pro tento fallback.
+    sysfs_mount=$(awk '$2 == "/sys" { print $4; exit }' /proc/mounts)
+    case ",$sysfs_mount," in
+        *,ro,*)
+            SYSFS_WAS_RO=true
+            if mount -o remount,rw /sys 2>/dev/null; then
+                SYSFS_REMOUNTED_RW=true
+            fi
+            ;;
+    esac
+
+    if ! printf 'on\n' > "$path" 2>/dev/null; then
+        bashio::log.warning "Cannot force DRM connector $(basename "$(dirname "$path")"); /sys is not writable"
+        return 1
+    fi
+    FORCED_DRM_STATUS_PATH="$path"
+    sleep 1
+    [ "$(cat "$path" 2>/dev/null)" = "connected" ]
+}
+
+save_last_drm_connector() {
+    local output="$1"
+    local connector=""
+    local suffix=""
+    local status_path
+
+    case "$output" in
+        HDMI-*) suffix="${output#HDMI-}"; connector="HDMI-A-$suffix" ;;
+        DP-*)   connector="$output" ;;
+        DVI-*)  connector="$output" ;;
+        VGA-*)  connector="$output" ;;
+        *)      connector="$output" ;;
+    esac
+
+    for status_path in /sys/class/drm/card[0-9]*-"$connector"/status; do
+        [ -e "$status_path" ] || continue
+        if [ "$(cat "$status_path" 2>/dev/null)" = "connected" ]; then
+            printf '%s\n' "$connector" > "$LAST_DRM_CONNECTOR_FILE.tmp" &&
+                mv "$LAST_DRM_CONNECTOR_FILE.tmp" "$LAST_DRM_CONNECTOR_FILE"
+            bashio::log.info "Saved last working DRM connector: $connector"
+            return 0
+        fi
+    done
+    bashio::log.warning "Could not map X output $output to a connected DRM connector; keeping previous saved connector"
+    return 1
+}
+
 ## Determine main display card
 bashio::log.info "DRM video cards:"
 find /dev/dri/ -maxdepth 1 -type c -name 'card[0-9]*' 2>/dev/null | sed 's/^/  /'
 bashio::log.info "DRM video card driver and connection status:"
 selected_card=""
 for status_path in /sys/class/drm/card[0-9]*-*/status; do
-    [ -e "$status_path" ] || continue  # Skip if status file doesn't exist
-
+    [ -e "$status_path" ] || continue
     status=$(cat "$status_path")
     card_port=$(basename "$(dirname "$status_path")")
     card=${card_port%%-*}
     driver=$(basename "$(readlink "/sys/class/drm/$card/device/driver")")
-    if [ -z "$selected_card" ]  && [ "$status" = "connected" ]; then
-        selected_card="$card"  # Select first connected card
+    if [ -z "$selected_card" ] && [ "$status" = "connected" ]; then
+        selected_card="$card"
         printf "  *"
     else
         printf "   "
     fi
     printf "%-25s%-20s%s\n" "$card_port" "$driver" "$status"
 done
+
+if [ -z "$selected_card" ] && [ -s "$LAST_DRM_CONNECTOR_FILE" ]; then
+    saved_connector=$(cat "$LAST_DRM_CONNECTOR_FILE")
+    if [[ "$saved_connector" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+        bashio::log.warning "No connected DRM output; trying saved connector $saved_connector"
+        for status_path in /sys/class/drm/card[0-9]*-"$saved_connector"/status; do
+            [ -e "$status_path" ] || continue
+            if force_drm_connector "$status_path"; then
+                card_port=$(basename "$(dirname "$status_path")")
+                selected_card=${card_port%%-*}
+                bashio::log.info "Using forced DRM connector $card_port on $selected_card"
+                break
+            fi
+        done
+    else
+        bashio::log.warning "Saved DRM connector name is invalid; ignoring it"
+    fi
+fi
+
 if [ -z "$selected_card" ]; then
-    bashio::log.info "ERROR: No connected video card detected. Exiting.."
+    bashio::log.info "ERROR: No connected video card detected and saved connector could not be activated. First start requires a connected monitor."
     exit 1
 fi
 
@@ -555,6 +639,7 @@ for i in "${!OUTPUTS[@]}"; do
     bashio::log.info "  ${marker}[$((i + 1))] ${OUTPUTS[$i]}"
 done
 OUTPUT_NAME="${OUTPUTS[$((OUTPUT_NUMBER - 1))]}"  #Subtract 1 since zero-based
+save_last_drm_connector "$OUTPUT_NAME" || true
 
 # Configure the selected output and disable others
 for OUTPUT in "${OUTPUTS[@]}"; do
