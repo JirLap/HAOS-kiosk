@@ -75,6 +75,7 @@ FORCED_DRM_STATUS_PATH=""
 SYSFS_REMOUNTED_RW=false
 SYSFS_WAS_RO=false
 cleanup() {
+    local exit_code=$?
     if [ -n "$FORCED_DRM_STATUS_PATH" ] && [ -w "$FORCED_DRM_STATUS_PATH" ]; then
         printf 'detect\n' > "$FORCED_DRM_STATUS_PATH" 2>/dev/null || true
         bashio::log.info "Restored DRM connector to automatic detection"
@@ -82,7 +83,7 @@ cleanup() {
     if [ "$SYSFS_REMOUNTED_RW" = true ] && [ "$SYSFS_WAS_RO" = true ]; then
         mount -o remount,ro /sys 2>/dev/null || true
     fi
-    local exit_code=$?
+    
     bashio::log.info "Cleaning up and exiting..."
     if [ "$SAVE_ONSCREEN_CONFIG" = true ]; then
         dconf dump /org/onboard/ > "$ONBOARD_CONFIG_FILE"
