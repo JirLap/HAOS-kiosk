@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.2-welizard.123 - October 2026
+
+- Save the last working DRM display connector in persistent add-on config.
+- If all DRM connectors report disconnected on startup, try forcing the saved
+  connector on; restore automatic detection during normal add-on cleanup.
+- The first run still requires a connected monitor so the working connector
+  can be discovered and saved.
+
+## v1.3.2-welizard.122 - October 2026
+
+- Added ip tools
+
 ## v1.3.2-welizard.121 - October 2026
 
 - Stop bundling and copying Kiosk Scene runtime files into shared `/config`.
