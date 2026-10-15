@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.3.2-welizard.124 - October 2026
+- Rollback forcing monitor, test only
+
 ## v1.3.2-welizard.123 - October 2026
 
 - Save the last working DRM display connector in persistent add-on config.
